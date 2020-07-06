@@ -1,5 +1,6 @@
 import requests
 from utilities import ElasticWrapper
+from datetime import datetime
 
 
 class Udemy:
@@ -56,6 +57,7 @@ class Udemy:
         for category in self.category_mapping:
             print(f'********* STARTING CATEGORY {category} ************\n\n')
             category_courses = self.crawl_category(category)
+            self.save_category(category)
             self.all_courses.extend(category_courses)
             print(f'\n\n********* ENDING CATEGORY {category} ************\n\n')
 
@@ -82,7 +84,8 @@ class Udemy:
 
             self.category_courses[category].extend([{
                 **self.extract_features(course),
-                'category': category
+                'category': category,
+                'created_datetime': datetime.now()
             } for course in courses])
 
             page_number += 1
@@ -92,6 +95,10 @@ class Udemy:
 
     def get_full_url(self, page_number, category_id):
         return f'{self.base_url}&p={page_number}&category_id={category_id}'
+
+    def save_category(self, category, *, index_name='udemy_courses'):
+        courses = self.category_courses[category]
+        return ElasticWrapper.bulk_index_docs(courses, index_name=index_name)
 
     def save_courses(self, *, index_name='udemy_courses'):
         return ElasticWrapper.bulk_index_docs(self.all_courses, index_name=index_name)
